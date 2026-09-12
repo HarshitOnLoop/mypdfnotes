@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 
 const thumbnailCache = new Map();
 
-export default function PdfCard({ pdf, onOpen, colorIndex = 0 }) {
+export default function PdfCard({ pdf, onOpen, onDelete, colorIndex = 0 }) {
   const canvasRef = useRef(null);
   const [loaded, setLoaded] = useState(false);
 
@@ -32,7 +32,9 @@ export default function PdfCard({ pdf, onOpen, colorIndex = 0 }) {
 
     async function renderThumbnail() {
       if (!window.pdfjsLib || !canvasRef.current) return;
-      const pdfUrl = `/pdf/${encodeURIComponent(pdf.fileName)}`;
+      // Use pdf.url directly: blob URL for local uploads, /pdf/... for static
+      const pdfUrl = pdf.url || `/pdf/${encodeURIComponent(pdf.fileName)}`;
+
 
       // Check in-memory cache
       if (thumbnailCache.has(pdfUrl)) {
@@ -121,9 +123,16 @@ export default function PdfCard({ pdf, onOpen, colorIndex = 0 }) {
             <span className="bg-black/40 backdrop-blur-md px-1.5 py-0.5 rounded text-[8px] uppercase tracking-wider font-semibold">
               {safeSubject}
             </span>
-            <span className="bg-black/40 backdrop-blur-md px-1.5 py-0.5 rounded text-[8px]">
-              Pg. 01
-            </span>
+            <div className="flex items-center gap-1">
+              {pdf.isLocal && (
+                <span className="bg-amber-500/80 backdrop-blur-md px-1.5 py-0.5 rounded text-[7px] uppercase tracking-wider font-bold text-white">
+                  local
+                </span>
+              )}
+              <span className="bg-black/40 backdrop-blur-md px-1.5 py-0.5 rounded text-[8px]">
+                Pg. 01
+              </span>
+            </div>
           </div>
 
           {/* Bottom Glass Meta Bar */}
@@ -140,13 +149,25 @@ export default function PdfCard({ pdf, onOpen, colorIndex = 0 }) {
 
       {/* Card Sub-Footer: Title & Open button */}
       <div className="flex flex-col mt-auto pt-3 gap-1">
-        <div className="flex items-stretch overflow-hidden truncate rounded-sm border border-stone-200 shadow-sm">
-          <div className={`w-6 flex-shrink-0 flex items-center justify-center ${blockStyle.leftBg}`}>
-            <div className={`w-1.5 h-1.5 rounded-full ${blockStyle.dot}`}></div>
+        <div className="flex items-center gap-1">
+          <div className="flex items-stretch overflow-hidden truncate flex-1 rounded-sm border border-stone-200 shadow-sm">
+            <div className={`w-6 flex-shrink-0 flex items-center justify-center ${blockStyle.leftBg}`}>
+              <div className={`w-1.5 h-1.5 rounded-full ${blockStyle.dot}`}></div>
+            </div>
+            <div className={`px-2 py-1 flex items-center justify-start truncate ${blockStyle.rightBg} text-white text-[11px] font-sans font-bold`}>
+              <span className="truncate" title={safeTitle}>{safeTitle}</span>
+            </div>
           </div>
-          <div className={`px-2 py-1 flex items-center justify-start truncate ${blockStyle.rightBg} text-white text-[11px] font-sans font-bold`}>
-            <span className="truncate" title={safeTitle}>{safeTitle}</span>
-          </div>
+          {/* Delete button — only for locally uploaded PDFs */}
+          {onDelete && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(pdf); }}
+              className="flex-shrink-0 p-1 text-stone-400 hover:text-red-600 rounded-full transition-colors opacity-0 group-hover:opacity-100"
+              title="Remove from browser"
+            >
+              <span className="material-symbols-outlined text-[14px]">delete</span>
+            </button>
+          )}
         </div>
 
         <button 
