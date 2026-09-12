@@ -10,5 +10,17 @@
     "userNotes": "",
     "createdAt": "2026-09-12T12:38:37.680Z",
     "updatedAt": "2026-09-12T12:38:37.680Z"
+  },
+  "oop.pdf": {
+    "title": "Oop",
+    "subject": "Uploaded Notes",
+    "tags": [
+      "Uploaded"
+    ],
+    "isFavorite": false,
+    "lastReadPage": 1,
+    "userNotes": "",
+    "createdAt": "2026-09-12T14:55:37.836Z",
+    "updatedAt": "2026-09-12T14:55:37.836Z"
   }
 }
