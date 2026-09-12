@@ -3,27 +3,28 @@ import { fetchPdfBlobUrl } from '../utils/githubApi';
 
 const thumbnailCache = new Map();
 
-export default function PdfCard({ pdf, onOpen, onDelete, colorIndex = 0 }) {
+export default function PdfCard({ pdf, onOpen, onEdit, onDelete, colorIndex = 0 }) {
   const canvasRef = useRef(null);
   const [loaded, setLoaded] = useState(false);
 
   const safeTitle = pdf.title || pdf.fileName;
   const safeFilename = pdf.fileName;
   const safeSubject = pdf.subject || 'Notes';
+  const tags = Array.isArray(pdf.tags) ? pdf.tags : [];
 
   const styles = [
-    { leftBg: 'bg-[#2d0052]', dot: 'bg-white',    rightBg: 'bg-[#a855f7]' },
-    { leftBg: 'bg-[#003300]', dot: 'bg-white',    rightBg: 'bg-[#22c55e]' },
-    { leftBg: 'bg-[#001f5c]', dot: 'bg-white',    rightBg: 'bg-[#3b82f6]' },
-    { leftBg: 'bg-[#5c0000]', dot: 'bg-white',    rightBg: 'bg-[#ef4444]' },
-    { leftBg: 'bg-[#4a2800]', dot: 'bg-white',    rightBg: 'bg-[#f97316]' },
-    { leftBg: 'bg-[#003333]', dot: 'bg-white',    rightBg: 'bg-[#06b6d4]' },
-    { leftBg: 'bg-[#3d0033]', dot: 'bg-white',    rightBg: 'bg-[#ec4899]' },
-    { leftBg: 'bg-[#1a1a00]', dot: 'bg-white',    rightBg: 'bg-[#eab308]' },
-    { leftBg: 'bg-[#002233]', dot: 'bg-white',    rightBg: 'bg-[#0ea5e9]' },
-    { leftBg: 'bg-[#1f0040]', dot: 'bg-white',    rightBg: 'bg-[#8b5cf6]' },
-    { leftBg: 'bg-[#003322]', dot: 'bg-white',    rightBg: 'bg-[#10b981]' },
-    { leftBg: 'bg-[#330020]', dot: 'bg-white',    rightBg: 'bg-[#f43f5e]' }
+    { leftBg: 'bg-[#2d0052]', dot: 'bg-white', rightBg: 'bg-[#a855f7]' },
+    { leftBg: 'bg-[#003300]', dot: 'bg-white', rightBg: 'bg-[#22c55e]' },
+    { leftBg: 'bg-[#001f5c]', dot: 'bg-white', rightBg: 'bg-[#3b82f6]' },
+    { leftBg: 'bg-[#5c0000]', dot: 'bg-white', rightBg: 'bg-[#ef4444]' },
+    { leftBg: 'bg-[#4a2800]', dot: 'bg-white', rightBg: 'bg-[#f97316]' },
+    { leftBg: 'bg-[#003333]', dot: 'bg-white', rightBg: 'bg-[#06b6d4]' },
+    { leftBg: 'bg-[#3d0033]', dot: 'bg-white', rightBg: 'bg-[#ec4899]' },
+    { leftBg: 'bg-[#1a1a00]', dot: 'bg-white', rightBg: 'bg-[#eab308]' },
+    { leftBg: 'bg-[#002233]', dot: 'bg-white', rightBg: 'bg-[#0ea5e9]' },
+    { leftBg: 'bg-[#1f0040]', dot: 'bg-white', rightBg: 'bg-[#8b5cf6]' },
+    { leftBg: 'bg-[#003322]', dot: 'bg-white', rightBg: 'bg-[#10b981]' },
+    { leftBg: 'bg-[#330020]', dot: 'bg-white', rightBg: 'bg-[#f43f5e]' }
   ];
 
   const blockStyle = styles[colorIndex % styles.length];
@@ -73,7 +74,7 @@ export default function PdfCard({ pdf, onOpen, onDelete, colorIndex = 0 }) {
         }).promise;
 
         if (!isCancelled) {
-          thumbnailCache.set(pdfUrl, canvas);
+          thumbnailCache.set(pdf.fileName, canvas);
           setLoaded(true);
         }
       } catch (err) {
@@ -120,19 +121,19 @@ export default function PdfCard({ pdf, onOpen, onDelete, colorIndex = 0 }) {
           )}
 
           {/* Top Subtle Glass Header Bar */}
-          <div className="absolute top-0 inset-x-0 z-10 px-3 py-1.5 bg-gradient-to-b from-stone-900/40 via-stone-900/10 to-transparent flex items-center justify-between text-white font-mono text-[9px]">
-            <span className="bg-black/40 backdrop-blur-md px-1.5 py-0.5 rounded text-[8px] uppercase tracking-wider font-semibold">
+          <div className="absolute top-0 inset-x-0 z-10 px-3 py-1.5 bg-gradient-to-b from-stone-900/50 via-stone-900/15 to-transparent flex items-center justify-between text-white font-mono text-[9px]">
+            <span className="bg-black/50 backdrop-blur-md px-2 py-0.5 rounded text-[8px] uppercase tracking-wider font-semibold">
               {safeSubject}
             </span>
             <div className="flex items-center gap-1">
-              <span className="bg-black/40 backdrop-blur-md px-1.5 py-0.5 rounded text-[8px]">
+              <span className="bg-black/50 backdrop-blur-md px-1.5 py-0.5 rounded text-[8px]">
                 Pg. 01
               </span>
             </div>
           </div>
 
           {/* Bottom Glass Meta Bar */}
-          <div className="absolute bottom-0 inset-x-0 z-10 px-3 py-2 bg-gradient-to-t from-stone-950/80 via-stone-900/50 to-transparent flex items-center justify-between text-white font-mono text-[9px] backdrop-blur-[2px]">
+          <div className="absolute bottom-0 inset-x-0 z-10 px-3 py-2 bg-gradient-to-t from-stone-950/85 via-stone-900/50 to-transparent flex items-center justify-between text-white font-mono text-[9px] backdrop-blur-[2px]">
             <span className="truncate max-w-[120px] font-semibold text-[10px] drop-shadow-sm">
               {safeFilename}
             </span>
@@ -143,32 +144,69 @@ export default function PdfCard({ pdf, onOpen, onDelete, colorIndex = 0 }) {
         </div>
       </div>
 
-      {/* Card Sub-Footer: Title & Open button */}
-      <div className="flex flex-col mt-auto pt-3 gap-1">
-        <div className="flex items-center gap-1">
-          <div className="flex items-stretch overflow-hidden truncate flex-1 rounded-sm border border-stone-200 shadow-sm">
-            <div className={`w-6 flex-shrink-0 flex items-center justify-center ${blockStyle.leftBg}`}>
+      {/* Card Sub-Footer: Title, Tags & Quick Actions */}
+      <div className="flex flex-col mt-auto pt-3 gap-1.5">
+        {/* Title and Action Buttons Bar */}
+        <div className="flex items-center gap-1.5">
+          <div className="flex items-stretch overflow-hidden truncate flex-1 rounded-md border border-stone-200 shadow-xs bg-white">
+            <div className={`w-5 flex-shrink-0 flex items-center justify-center ${blockStyle.leftBg}`}>
               <div className={`w-1.5 h-1.5 rounded-full ${blockStyle.dot}`}></div>
             </div>
-            <div className={`px-2 py-1 flex items-center justify-start truncate ${blockStyle.rightBg} text-white text-[11px] font-sans font-bold`}>
+            <div className={`px-2 py-1 flex items-center justify-start truncate ${blockStyle.rightBg} text-white text-[11px] font-sans font-bold flex-1`}>
               <span className="truncate" title={safeTitle}>{safeTitle}</span>
             </div>
           </div>
-          {/* Delete button — only for locally uploaded PDFs */}
+
+          {/* Edit Button */}
+          {onEdit && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onEdit(pdf); }}
+              className="flex-shrink-0 w-7 h-7 flex items-center justify-center text-stone-500 hover:text-[#a13f20] hover:bg-stone-200 rounded-full transition-all border border-stone-200 bg-white shadow-xs"
+              title="Edit title, tags and details"
+            >
+              <span className="material-symbols-outlined text-[15px]">edit</span>
+            </button>
+          )}
+
+          {/* Delete Button */}
           {onDelete && (
             <button
+              type="button"
               onClick={(e) => { e.stopPropagation(); onDelete(pdf); }}
-              className="flex-shrink-0 p-1 text-stone-400 hover:text-red-600 rounded-full transition-colors opacity-0 group-hover:opacity-100"
-              title="Remove from browser"
+              className="flex-shrink-0 w-7 h-7 flex items-center justify-center text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-all border border-stone-200 bg-white shadow-xs"
+              title="Delete note from GitHub"
             >
-              <span className="material-symbols-outlined text-[14px]">delete</span>
+              <span className="material-symbols-outlined text-[15px]">delete</span>
             </button>
           )}
         </div>
 
+        {/* Tag pills list */}
+        {tags.length > 0 && (
+          <div className="flex items-center gap-1 overflow-hidden flex-wrap max-h-[22px] py-0.5">
+            {tags.slice(0, 3).map((t) => (
+              <span
+                key={t}
+                className="text-[9px] font-medium font-sans px-1.5 py-0.5 rounded bg-stone-200/80 text-stone-700 truncate max-w-[80px]"
+                title={`#${t}`}
+              >
+                #{t}
+              </span>
+            ))}
+            {tags.length > 3 && (
+              <span className="text-[9px] font-mono text-stone-400">
+                +{tags.length - 3}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Open PDF Button */}
         <button 
+          type="button"
           onClick={() => onOpen(pdf.fileName)}
-          className="mt-1 w-full py-1.5 px-3 rounded-full bg-primary text-white text-xs font-medium hover:bg-[#a13f20] transition-all duration-200 flex items-center justify-center gap-1.5 shadow-sm group-hover:shadow"
+          className="mt-0.5 w-full py-1.5 px-3 rounded-full bg-primary text-white text-xs font-semibold hover:bg-[#a13f20] transition-all duration-200 flex items-center justify-center gap-1.5 shadow-xs group-hover:shadow"
         >
           <span className="material-symbols-outlined text-[14px]">open_in_new</span> Open PDF
         </button>

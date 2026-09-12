@@ -46,7 +46,7 @@ export function isUsingEnvToken() {
 // ── Helpers ─────────────────────────────────────────────────────────
 function headers() {
   const token = getToken();
-  if (!token) throw new Error('GitHub token not configured');
+  if (!token) throw new Error('GitHub token not configured. Please add VITE_GITHUB_TOKEN to .env or settings.');
   return {
     Authorization: `Bearer ${token}`,
     Accept: 'application/vnd.github.v3+json',
@@ -59,6 +59,19 @@ function formatFileSize(bytes) {
   const sizes = ['B', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(1024));
   return parseFloat((bytes / Math.pow(1024, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+// Convert File / Blob to base64 smoothly using native FileReader
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result.split(',')[1];
+      resolve(base64);
+    };
+    reader.onerror = (error) => reject(error);
+    reader.readAsDataURL(file);
+  });
 }
 
 // ── Validate token ──────────────────────────────────────────────────
@@ -76,7 +89,7 @@ export async function validateToken() {
 // ── Fetch list of PDFs from repo ────────────────────────────────────
 export async function fetchPdfList() {
   const res = await fetch(
-    `${API_BASE}/repos/${OWNER}/${REPO}/contents/${PDF_DIR}?ref=${BRANCH}`,
+    `${API_BASE}/repos/${OWNER}/${REPO}/contents/${PDF_DIR}?ref=${BRANCH}&t=${Date.now()}`,
     { headers: headers() }
   );
 
@@ -106,7 +119,7 @@ export async function fetchPdfList() {
 // ── Fetch metadata JSON from repo ───────────────────────────────────
 export async function fetchMetadata() {
   const res = await fetch(
-    `${API_BASE}/repos/${OWNER}/${REPO}/contents/${METADATA_FILE}?ref=${BRANCH}`,
+    `${API_BASE}/repos/${OWNER}/${REPO}/contents/${METADATA_FILE}?ref=${BRANCH}&t=${Date.now()}`,
     { headers: headers() }
   );
 
@@ -121,12 +134,31 @@ export async function fetchMetadata() {
 
   const file = await res.json();
   const content = atob(file.content.replace(/\n/g, ''));
-  const data = JSON.parse(content);
-  return { data, sha: file.sha };
+  try {
+    const data = JSON.parse(decodeURIComponent(escape(content)));
+    return { data, sha: file.sha };
+  } catch {
+    try {
+      const data = JSON.parse(content);
+      return { data, sha: file.sha };
+    } catch {
+      return { data: {}, sha: file.sha };
+    }
+  }
 }
 
-// ── Save metadata JSON to repo ──────────────────────────────────────
-export async function saveMetadata(metadata, sha) {
+// ── Save metadata JSON to repo with automatic conflict retry ────────
+export async function saveMetadata(metadata, knownSha = null) {
+  let currentSha = knownSha;
+  if (!currentSha) {
+    try {
+      const existing = await fetchMetadata();
+      currentSha = existing.sha;
+    } catch {
+      // ignore
+    }
+  }
+
   const content = btoa(unescape(encodeURIComponent(JSON.stringify(metadata, null, 2))));
 
   const body = {
@@ -134,9 +166,9 @@ export async function saveMetadata(metadata, sha) {
     content,
     branch: BRANCH,
   };
-  if (sha) body.sha = sha;
+  if (currentSha) body.sha = currentSha;
 
-  const res = await fetch(
+  let res = await fetch(
     `${API_BASE}/repos/${OWNER}/${REPO}/contents/${METADATA_FILE}`,
     {
       method: 'PUT',
@@ -144,6 +176,22 @@ export async function saveMetadata(metadata, sha) {
       body: JSON.stringify(body),
     }
   );
+
+  // If 409 conflict, retry once with latest SHA
+  if (res.status === 409) {
+    const latest = await fetchMetadata();
+    if (latest.sha) {
+      body.sha = latest.sha;
+      res = await fetch(
+        `${API_BASE}/repos/${OWNER}/${REPO}/contents/${METADATA_FILE}`,
+        {
+          method: 'PUT',
+          headers: headers(),
+          body: JSON.stringify(body),
+        }
+      );
+    }
+  }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -156,13 +204,7 @@ export async function saveMetadata(metadata, sha) {
 
 // ── Upload a PDF file to repo ───────────────────────────────────────
 export async function uploadPdf(file) {
-  const arrayBuffer = await file.arrayBuffer();
-  const bytes = new Uint8Array(arrayBuffer);
-  let binary = '';
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  const base64Content = btoa(binary);
+  const base64Content = await fileToBase64(file);
 
   let fileName = file.name;
   if (!fileName.toLowerCase().endsWith('.pdf')) {
@@ -171,16 +213,13 @@ export async function uploadPdf(file) {
   fileName = fileName.replace(/[<>:"/\\|?*]/g, '_');
 
   // Check if file already exists
-  let existingSha = null;
   try {
     const checkRes = await fetch(
       `${API_BASE}/repos/${OWNER}/${REPO}/contents/${PDF_DIR}/${encodeURIComponent(fileName)}?ref=${BRANCH}`,
       { headers: headers() }
     );
     if (checkRes.ok) {
-      const existing = await checkRes.json();
-      existingSha = existing.sha;
-      // Append timestamp to avoid overwriting
+      // Append timestamp to avoid overwriting existing file
       const ext = '.pdf';
       const base = fileName.slice(0, -ext.length);
       fileName = `${base}_${Date.now()}${ext}`;
@@ -222,19 +261,20 @@ export async function uploadPdf(file) {
 
 // ── Delete a PDF from repo ──────────────────────────────────────────
 export async function deletePdf(fileName, sha) {
-  if (!sha) {
+  let fileSha = sha;
+  if (!fileSha) {
     const res = await fetch(
       `${API_BASE}/repos/${OWNER}/${REPO}/contents/${PDF_DIR}/${encodeURIComponent(fileName)}?ref=${BRANCH}`,
       { headers: headers() }
     );
     if (!res.ok) throw new Error(`File not found: ${fileName}`);
     const file = await res.json();
-    sha = file.sha;
+    fileSha = file.sha;
   }
 
   const body = {
     message: `Delete ${fileName}`,
-    sha,
+    sha: fileSha,
     branch: BRANCH,
   };
 
@@ -251,6 +291,86 @@ export async function deletePdf(fileName, sha) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.message || `Failed to delete ${fileName}: ${res.status}`);
   }
+}
+
+// ── Rename or update metadata of a PDF ──────────────────────────────
+export async function updatePdfDetails(oldFileName, newFileName, details, currentMetaSha = null) {
+  const { data: currentMetadata, sha: fetchedMetaSha } = await fetchMetadata();
+  const metaShaToUse = currentMetaSha || fetchedMetaSha;
+
+  let updatedFileName = oldFileName;
+  let newSha = null;
+
+  // If filename changed, rename on GitHub
+  if (newFileName && newFileName.trim() && newFileName.trim() !== oldFileName) {
+    let cleanNewName = newFileName.trim();
+    if (!cleanNewName.toLowerCase().endsWith('.pdf')) {
+      cleanNewName += '.pdf';
+    }
+    cleanNewName = cleanNewName.replace(/[<>:"/\\|?*]/g, '_');
+
+    // 1. Fetch old file
+    const oldRes = await fetch(
+      `${API_BASE}/repos/${OWNER}/${REPO}/contents/${PDF_DIR}/${encodeURIComponent(oldFileName)}?ref=${BRANCH}`,
+      { headers: headers() }
+    );
+    if (!oldRes.ok) throw new Error(`Could not find original file "${oldFileName}" on GitHub.`);
+    const oldFile = await oldRes.json();
+
+    // 2. Put file under new name
+    const putRes = await fetch(
+      `${API_BASE}/repos/${OWNER}/${REPO}/contents/${PDF_DIR}/${encodeURIComponent(cleanNewName)}`,
+      {
+        method: 'PUT',
+        headers: headers(),
+        body: JSON.stringify({
+          message: `Rename ${oldFileName} to ${cleanNewName}`,
+          content: oldFile.content,
+          branch: BRANCH,
+        }),
+      }
+    );
+    if (!putRes.ok) {
+      const err = await putRes.json().catch(() => ({}));
+      throw new Error(err.message || `Failed to create renamed file ${cleanNewName}`);
+    }
+    const putResult = await putRes.json();
+    newSha = putResult.content.sha;
+
+    // 3. Delete old file
+    await deletePdf(oldFileName, oldFile.sha);
+    revokePdfBlobUrl(oldFileName);
+    updatedFileName = cleanNewName;
+  }
+
+  // 4. Update metadata entry
+  const newMetadata = { ...currentMetadata };
+  const existingEntry = newMetadata[oldFileName] || {};
+
+  if (updatedFileName !== oldFileName) {
+    delete newMetadata[oldFileName];
+  }
+
+  newMetadata[updatedFileName] = {
+    ...existingEntry,
+    title: details.title ?? existingEntry.title ?? '',
+    subject: details.subject ?? existingEntry.subject ?? 'Notes',
+    tags: details.tags ?? existingEntry.tags ?? ['Notes'],
+    userNotes: details.userNotes ?? existingEntry.userNotes ?? '',
+    isFavorite: details.isFavorite ?? existingEntry.isFavorite ?? false,
+    lastReadPage: details.lastReadPage ?? existingEntry.lastReadPage ?? 1,
+    createdAt: existingEntry.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  const savedSha = await saveMetadata(newMetadata, metaShaToUse);
+
+  return {
+    updatedFileName,
+    newSha,
+    metadata: newMetadata,
+    metadataSha: savedSha,
+  };
 }
 
 // ── Get raw download URL for a PDF ──────────────────────────────────
@@ -275,7 +395,7 @@ export async function fetchPdfBlobUrl(fileName) {
   }
 
   const res = await fetch(
-    `${API_BASE}/repos/${OWNER}/${REPO}/contents/${PDF_DIR}/${encodeURIComponent(fileName)}?ref=${BRANCH}`,
+    `${API_BASE}/repos/${OWNER}/${REPO}/contents/${PDF_DIR}/${encodeURIComponent(fileName)}?ref=${BRANCH}&t=${Date.now()}`,
     { headers: reqHeaders }
   );
 
@@ -319,7 +439,7 @@ export function mergePdfsWithMetadata(fileList, metadata) {
       fileName: file.fileName,
       sha: file.sha,
       title: meta.title || readableTitle,
-      subject: meta.subject || 'General Notes',
+      subject: meta.subject || 'Notes',
       tags: meta.tags || ['Notes'],
       isFavorite: !!meta.isFavorite,
       lastReadPage: meta.lastReadPage || 1,
@@ -332,4 +452,3 @@ export function mergePdfsWithMetadata(fileList, metadata) {
     };
   });
 }
-
