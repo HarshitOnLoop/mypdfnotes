@@ -10,5 +10,17 @@
     "userNotes": "",
     "createdAt": "2026-09-12T12:37:45.792Z",
     "updatedAt": "2026-09-12T12:37:45.792Z"
+  },
+  "new resume .pdf": {
+    "title": "New Resume ",
+    "subject": "Uploaded Notes",
+    "tags": [
+      "Uploaded"
+    ],
+    "isFavorite": false,
+    "lastReadPage": 1,
+    "userNotes": "",
+    "createdAt": "2026-09-12T12:38:37.680Z",
+    "updatedAt": "2026-09-12T12:38:37.680Z"
   }
 }
