@@ -86,18 +86,87 @@ export default function App() {
     }
   }, [storageReady, loadPdfs]);
 
-  // Open PDF — fetch authenticated blob URL
+  // Open PDF — fetch authenticated blob URL safely without popup blocker
   const handleOpenPdf = async (fileName) => {
+    // 1. Open new tab synchronously during user gesture
+    const newTab = window.open('', '_blank');
+    if (newTab) {
+      try {
+        newTab.document.write(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>${fileName} — mypdfnotes</title>
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <style>
+                body {
+                  margin: 0;
+                  background-color: #f9f9f7;
+                  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  height: 100vh;
+                  color: #292524;
+                }
+                .box {
+                  text-align: center;
+                  padding: 32px 40px;
+                  background: white;
+                  border-radius: 16px;
+                  box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+                  border: 1px solid #e7e5e4;
+                  max-width: 90%;
+                }
+                .spinner {
+                  width: 32px;
+                  height: 32px;
+                  border: 3px solid #e7e5e4;
+                  border-top-color: #a13f20;
+                  border-radius: 50%;
+                  animation: spin 0.8s linear infinite;
+                  margin: 0 auto 16px auto;
+                }
+                @keyframes spin { to { transform: rotate(360deg); } }
+                .title { font-size: 15px; font-weight: 600; margin: 0 0 6px 0; color: #1c1917; }
+                .sub { font-size: 12px; color: #78716c; margin: 0; font-family: monospace; word-break: break-all; }
+              </style>
+            </head>
+            <body>
+              <div class="box">
+                <div class="spinner"></div>
+                <p class="title">Opening PDF Document...</p>
+                <p class="sub">${fileName}</p>
+              </div>
+            </body>
+          </html>
+        `);
+      } catch {
+        // ignore write error
+      }
+    }
+
     try {
       addToast(`Opening ${fileName}...`, 'info');
       const blobUrl = await fetchPdfBlobUrl(fileName);
-      window.open(blobUrl, '_blank');
+      if (newTab && !newTab.closed) {
+        newTab.location.href = blobUrl;
+      } else {
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
     } catch (err) {
       console.error('Failed to open PDF:', err);
       const pdf = pdfs.find(p => p.fileName === fileName);
-      if (pdf?.downloadUrl) {
-        window.open(pdf.downloadUrl, '_blank');
+      if (newTab && !newTab.closed && pdf?.downloadUrl) {
+        newTab.location.href = pdf.downloadUrl;
       } else {
+        if (newTab && !newTab.closed) newTab.close();
         addToast(`Could not open PDF: ${err.message}`, 'error');
       }
     }
