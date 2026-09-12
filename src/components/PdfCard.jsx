@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 
 const thumbnailCache = new Map();
 
-export default function PdfCard({ pdf, onOpen, onEdit, onDelete, colorIndex = 0 }) {
+export default function PdfCard({ pdf, onOpen, colorIndex = 0 }) {
   const canvasRef = useRef(null);
   const [loaded, setLoaded] = useState(false);
 
@@ -138,32 +138,14 @@ export default function PdfCard({ pdf, onOpen, onEdit, onDelete, colorIndex = 0 
         </div>
       </div>
 
-      {/* Card Sub-Footer: Title, Open & Edit buttons */}
+      {/* Card Sub-Footer: Title & Open button */}
       <div className="flex flex-col mt-auto pt-3 gap-1">
-        <div className="flex items-center justify-between gap-1">
-          <div className="flex items-stretch overflow-hidden truncate max-w-[80%] rounded-sm border border-stone-200 shadow-sm">
-             <div className={`w-6 flex-shrink-0 flex items-center justify-center ${blockStyle.leftBg}`}>
-               <div className={`w-1.5 h-1.5 rounded-full ${blockStyle.dot}`}></div>
-             </div>
-             <div className={`px-2 py-1 flex items-center justify-start truncate ${blockStyle.rightBg} text-white text-[11px] font-sans font-bold`}>
-               <span className="truncate" title={safeTitle}>{safeTitle}</span>
-             </div>
+        <div className="flex items-stretch overflow-hidden truncate rounded-sm border border-stone-200 shadow-sm">
+          <div className={`w-6 flex-shrink-0 flex items-center justify-center ${blockStyle.leftBg}`}>
+            <div className={`w-1.5 h-1.5 rounded-full ${blockStyle.dot}`}></div>
           </div>
-          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button 
-              onClick={(e) => { e.stopPropagation(); onEdit(pdf); }}
-              className="p-1 text-on-surface-variant hover:text-primary rounded-full" 
-              title="Edit / Rename"
-            >
-              <span className="material-symbols-outlined text-[14px]">edit</span>
-            </button>
-            <button 
-              onClick={(e) => { e.stopPropagation(); onDelete(pdf); }}
-              className="p-1 text-on-surface-variant hover:text-red-600 rounded-full" 
-              title="Delete"
-            >
-              <span className="material-symbols-outlined text-[14px]">delete</span>
-            </button>
+          <div className={`px-2 py-1 flex items-center justify-start truncate ${blockStyle.rightBg} text-white text-[11px] font-sans font-bold`}>
+            <span className="truncate" title={safeTitle}>{safeTitle}</span>
           </div>
         </div>
 
@@ -171,7 +153,7 @@ export default function PdfCard({ pdf, onOpen, onEdit, onDelete, colorIndex = 0 
           onClick={() => onOpen(pdf.fileName)}
           className="mt-1 w-full py-1.5 px-3 rounded-full bg-primary text-white text-xs font-medium hover:bg-[#a13f20] transition-all duration-200 flex items-center justify-center gap-1.5 shadow-sm group-hover:shadow"
         >
-          <span className="material-symbols-outlined text-[14px]">open_in_new</span> Open in Chrome
+          <span className="material-symbols-outlined text-[14px]">open_in_new</span> Open PDF
         </button>
       </div>
     </article>
