@@ -243,6 +243,56 @@ export function getPdfRawUrl(fileName) {
   return `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/${PDF_DIR}/${encodeURIComponent(fileName)}`;
 }
 
+// ── Blob URL cache & PDF content fetcher ────────────────────────────
+const blobUrlCache = new Map();
+
+export async function fetchPdfBlobUrl(fileName) {
+  if (blobUrlCache.has(fileName)) {
+    return blobUrlCache.get(fileName);
+  }
+
+  const token = getToken();
+  const reqHeaders = {
+    Accept: 'application/vnd.github.v3.raw',
+  };
+  if (token) {
+    reqHeaders['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(
+    `${API_BASE}/repos/${OWNER}/${REPO}/contents/${PDF_DIR}/${encodeURIComponent(fileName)}?ref=${BRANCH}`,
+    { headers: reqHeaders }
+  );
+
+  if (!res.ok) {
+    // Fallback: try raw.githubusercontent.com directly if API fails
+    const rawRes = await fetch(getPdfRawUrl(fileName), {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!rawRes.ok) {
+      throw new Error(`Failed to load PDF (${res.status})`);
+    }
+    const blob = await rawRes.blob();
+    const pdfBlob = new Blob([blob], { type: 'application/pdf' });
+    const url = URL.createObjectURL(pdfBlob);
+    blobUrlCache.set(fileName, url);
+    return url;
+  }
+
+  const arrayBuffer = await res.arrayBuffer();
+  const pdfBlob = new Blob([arrayBuffer], { type: 'application/pdf' });
+  const blobUrl = URL.createObjectURL(pdfBlob);
+  blobUrlCache.set(fileName, blobUrl);
+  return blobUrl;
+}
+
+export function revokePdfBlobUrl(fileName) {
+  if (blobUrlCache.has(fileName)) {
+    URL.revokeObjectURL(blobUrlCache.get(fileName));
+    blobUrlCache.delete(fileName);
+  }
+}
+
 // ── Merge file list with metadata into unified PDF objects ──────────
 export function mergePdfsWithMetadata(fileList, metadata) {
   return fileList.map(file => {
@@ -267,3 +317,4 @@ export function mergePdfsWithMetadata(fileList, metadata) {
     };
   });
 }
+

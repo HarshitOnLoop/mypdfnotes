@@ -12,6 +12,8 @@ import {
   saveMetadata,
   uploadPdf,
   deletePdf,
+  fetchPdfBlobUrl,
+  revokePdfBlobUrl,
   mergePdfsWithMetadata,
 } from './utils/githubApi';
 
@@ -72,11 +74,20 @@ export default function App() {
     }
   }, [tokenReady, loadPdfs]);
 
-  // Open PDF — use raw GitHub URL
-  const handleOpenPdf = (fileName) => {
-    const pdf = pdfs.find(p => p.fileName === fileName);
-    if (pdf && pdf.downloadUrl) {
-      window.open(pdf.downloadUrl, '_blank');
+  // Open PDF — fetch authenticated blob URL so private/public repos both display natively
+  const handleOpenPdf = async (fileName) => {
+    try {
+      addToast(`Opening ${fileName}...`, 'info');
+      const blobUrl = await fetchPdfBlobUrl(fileName);
+      window.open(blobUrl, '_blank');
+    } catch (err) {
+      console.error('Failed to open PDF:', err);
+      const pdf = pdfs.find(p => p.fileName === fileName);
+      if (pdf?.downloadUrl) {
+        window.open(pdf.downloadUrl, '_blank');
+      } else {
+        addToast(`Could not open PDF: ${err.message}`, 'error');
+      }
     }
   };
 
@@ -148,6 +159,7 @@ export default function App() {
 
     try {
       await deletePdf(fileName, pdf.sha);
+      revokePdfBlobUrl(fileName);
 
       // Remove from metadata and save
       const newMetadata = { ...metadataCache };

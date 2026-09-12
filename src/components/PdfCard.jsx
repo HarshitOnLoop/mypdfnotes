@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { fetchPdfBlobUrl } from '../utils/githubApi';
 
 const thumbnailCache = new Map();
 
@@ -32,13 +33,10 @@ export default function PdfCard({ pdf, onOpen, onDelete, colorIndex = 0 }) {
 
     async function renderThumbnail() {
       if (!window.pdfjsLib || !canvasRef.current) return;
-      // Use downloadUrl from GitHub raw content
-      const pdfUrl = pdf.downloadUrl || pdf.url || `/pdf/${encodeURIComponent(pdf.fileName)}`;
 
-
-      // Check in-memory cache
-      if (thumbnailCache.has(pdfUrl)) {
-        const cached = thumbnailCache.get(pdfUrl);
+      // Check in-memory cache by fileName
+      if (thumbnailCache.has(pdf.fileName)) {
+        const cached = thumbnailCache.get(pdf.fileName);
         const canvas = canvasRef.current;
         if (canvas) {
           canvas.width = cached.width;
@@ -51,6 +49,9 @@ export default function PdfCard({ pdf, onOpen, onDelete, colorIndex = 0 }) {
       }
 
       try {
+        const pdfUrl = await fetchPdfBlobUrl(pdf.fileName);
+        if (isCancelled) return;
+
         const loadingTask = window.pdfjsLib.getDocument(pdfUrl);
         const pdfDoc = await loadingTask.promise;
         if (isCancelled) return;
