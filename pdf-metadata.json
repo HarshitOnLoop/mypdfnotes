@@ -1,15 +1,16 @@
 {
   "new resume .pdf": {
-    "title": "New Resume ",
-    "subject": "Uploaded Notes",
+    "title": "Resume",
+    "subject": "resume",
     "tags": [
-      "Uploaded"
+      "Uploaded",
+      "resume"
     ],
     "isFavorite": false,
     "lastReadPage": 1,
     "userNotes": "",
     "createdAt": "2026-09-12T14:58:16.343Z",
-    "updatedAt": "2026-09-12T14:58:16.343Z"
+    "updatedAt": "2026-09-12T14:58:31.741Z"
   },
   "oop_1789225030485.pdf": {
     "title": "Oop",
