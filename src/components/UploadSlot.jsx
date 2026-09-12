@@ -49,7 +49,7 @@ export default function UploadSlot({ onUpload, uploading = false }) {
         </div>
 
         <h3 className="text-xs font-semibold text-primary font-sans">
-          {uploading ? 'Saving to browser…' : '+ Upload PDF Notes'}
+          {uploading ? 'Uploading to GitHub…' : '+ Upload PDF Notes'}
         </h3>
         <p className="text-[11px] text-on-surface-variant mt-1 leading-snug">
           {uploading ? 'Please wait' : 'Drop PDF files here or click to browse'}
@@ -57,7 +57,7 @@ export default function UploadSlot({ onUpload, uploading = false }) {
 
         {!uploading && (
           <span className="mt-3 px-2.5 py-1 rounded-full bg-surface text-[10px] font-mono text-outline border border-surface-container-high">
-            PDF · up to 500 MB
+            PDF · up to 100 MB
           </span>
         )}
       </div>
@@ -65,7 +65,7 @@ export default function UploadSlot({ onUpload, uploading = false }) {
       {/* Sub-footer */}
       <div className="flex flex-col mt-auto pt-3 gap-1">
         <span className="text-xs font-semibold text-primary truncate">
-          {uploading ? 'Uploading…' : 'Import New Notes'}
+          {uploading ? 'Uploading to GitHub…' : 'Import New Notes'}
         </span>
         <button
           disabled={uploading}

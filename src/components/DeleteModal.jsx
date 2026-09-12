@@ -14,7 +14,7 @@ export default function DeleteModal({ pdf, onClose, onConfirm }) {
           <h3>Remove PDF Note?</h3>
         </div>
         <p className="text-xs text-stone-600 mb-4 leading-relaxed">
-          Are you sure you want to remove <strong className="text-primary font-mono">{pdf.title || pdf.fileName}</strong> from your <code className="bg-stone-200 px-1 py-0.5 rounded text-black">/pdf</code> folder?
+          Are you sure you want to delete <strong className="text-primary font-mono">{pdf.title || pdf.fileName}</strong> from your GitHub repository? This cannot be undone.
         </p>
         <div className="flex justify-end gap-2">
           <button 

@@ -32,8 +32,8 @@ export default function PdfCard({ pdf, onOpen, onDelete, colorIndex = 0 }) {
 
     async function renderThumbnail() {
       if (!window.pdfjsLib || !canvasRef.current) return;
-      // Use pdf.url directly: blob URL for local uploads, /pdf/... for static
-      const pdfUrl = pdf.url || `/pdf/${encodeURIComponent(pdf.fileName)}`;
+      // Use downloadUrl from GitHub raw content
+      const pdfUrl = pdf.downloadUrl || pdf.url || `/pdf/${encodeURIComponent(pdf.fileName)}`;
 
 
       // Check in-memory cache
@@ -124,11 +124,6 @@ export default function PdfCard({ pdf, onOpen, onDelete, colorIndex = 0 }) {
               {safeSubject}
             </span>
             <div className="flex items-center gap-1">
-              {pdf.isLocal && (
-                <span className="bg-amber-500/80 backdrop-blur-md px-1.5 py-0.5 rounded text-[7px] uppercase tracking-wider font-bold text-white">
-                  local
-                </span>
-              )}
               <span className="bg-black/40 backdrop-blur-md px-1.5 py-0.5 rounded text-[8px]">
                 Pg. 01
               </span>
