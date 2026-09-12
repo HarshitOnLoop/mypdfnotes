@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 
-export default function UploadSlot({ onUpload, uploading = false }) {
+export default function UploadSlot({ onUpload, uploading = false, githubConfigured = false }) {
   const fileInputRef = useRef(null);
 
   const handleFileChange = (e) => {
@@ -56,8 +56,15 @@ export default function UploadSlot({ onUpload, uploading = false }) {
         </p>
 
         {!uploading && (
-          <span className="mt-3 px-2.5 py-1 rounded-full bg-surface text-[10px] font-mono text-outline border border-surface-container-high">
-            PDF · up to 500 MB
+          <span className={`mt-3 px-2.5 py-1 rounded-full text-[10px] font-mono border flex items-center gap-1 ${
+            githubConfigured
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+              : 'bg-surface text-outline border-surface-container-high'
+          }`}>
+            <span className="material-symbols-outlined text-[11px]">
+              {githubConfigured ? 'cloud_done' : 'cloud_off'}
+            </span>
+            {githubConfigured ? 'Syncs to GitHub' : 'Local only · Connect GitHub'}
           </span>
         )}
       </div>
