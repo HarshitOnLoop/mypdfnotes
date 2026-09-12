@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getToken, setToken, validateToken } from '../utils/githubApi';
+import { getToken, setToken, validateToken, isUsingEnvToken, hasEnvToken } from '../utils/githubApi';
 
 export default function SettingsModal({ isOpen, onClose, onTokenChange }) {
   const [tokenInput, setTokenInput] = useState('');
@@ -24,13 +24,7 @@ export default function SettingsModal({ isOpen, onClose, onTokenChange }) {
       return;
     }
     setStatus('checking');
-    // Temporarily set to validate
-    const prev = getToken();
-    setToken(token);
     const valid = await validateToken();
-    if (!valid) {
-      setToken(prev); // revert
-    }
     setStatus(valid ? 'valid' : 'invalid');
   };
 
@@ -49,17 +43,25 @@ export default function SettingsModal({ isOpen, onClose, onTokenChange }) {
 
   const handleClear = () => {
     setToken('');
-    setTokenInput('');
-    setStatus('idle');
-    onTokenChange?.(false);
+    const fallback = getToken(); // will get env token if available
+    setTokenInput(fallback);
+    if (fallback) {
+      checkToken(fallback);
+      onTokenChange?.(true);
+    } else {
+      setStatus('idle');
+      onTokenChange?.(false);
+    }
   };
 
   if (!isOpen) return null;
 
+  const fromEnv = isUsingEnvToken();
+
   const statusConfig = {
     idle: { icon: 'key', color: 'text-stone-400', text: 'Enter your GitHub PAT' },
     checking: { icon: 'sync', color: 'text-amber-500 animate-spin', text: 'Verifying...' },
-    valid: { icon: 'check_circle', color: 'text-emerald-500', text: 'Connected to GitHub' },
+    valid: { icon: 'check_circle', color: 'text-emerald-500', text: fromEnv ? 'Connected via Vercel Environment (VITE_GITHUB_TOKEN)' : 'Connected to GitHub' },
     invalid: { icon: 'error', color: 'text-red-500', text: 'Invalid token or no repo access' },
   };
 
@@ -97,14 +99,16 @@ export default function SettingsModal({ isOpen, onClose, onTokenChange }) {
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-semibold text-primary flex items-center justify-between">
               <span>Personal Access Token</span>
-              <span className="text-[10px] font-mono text-stone-400">repo scope required</span>
+              <span className="text-[10px] font-mono text-stone-400">
+                {fromEnv ? 'configured in Vercel env' : 'repo scope required'}
+              </span>
             </label>
             <div className="relative">
               <input
                 type={showToken ? 'text' : 'password'}
                 value={tokenInput}
                 onChange={(e) => setTokenInput(e.target.value)}
-                placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                placeholder={hasEnvToken() ? 'Using VITE_GITHUB_TOKEN from env' : 'ghp_xxxxxxxxxxxxxxxxxxxx'}
                 className="w-full pl-3 pr-10 py-2.5 text-xs bg-[#f4f4f2] border border-stone-200 rounded-lg focus:outline-none focus:bg-white focus:ring-1 focus:ring-black/40 font-mono"
               />
               <button

@@ -12,12 +12,18 @@ const METADATA_FILE = 'pdf-metadata.json';
 // ── Token management ────────────────────────────────────────────────
 const TOKEN_KEY = 'mypdfnotes_github_token';
 
+export function getEnvToken() {
+  return (import.meta.env.VITE_GITHUB_TOKEN || '').trim();
+}
+
 export function getToken() {
-  return localStorage.getItem(TOKEN_KEY) || '';
+  const local = localStorage.getItem(TOKEN_KEY);
+  if (local && local.trim()) return local.trim();
+  return getEnvToken();
 }
 
 export function setToken(token) {
-  if (token) {
+  if (token && token.trim()) {
     localStorage.setItem(TOKEN_KEY, token.trim());
   } else {
     localStorage.removeItem(TOKEN_KEY);
@@ -26,6 +32,15 @@ export function setToken(token) {
 
 export function hasToken() {
   return !!getToken();
+}
+
+export function hasEnvToken() {
+  return !!getEnvToken();
+}
+
+export function isUsingEnvToken() {
+  const local = localStorage.getItem(TOKEN_KEY);
+  return (!local || !local.trim()) && !!getEnvToken();
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────
